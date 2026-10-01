@@ -392,18 +392,28 @@ const MARKS = "team-board-marks";
 let marks = {};
 try { marks = JSON.parse(localStorage.getItem(MARKS) || "{}"); } catch (e) { marks = {}; }
 let base = [];
+// 印は「押した時の一覧の状態（base）」と一緒に持つ。一覧が更新されてその動画の状態が変わっていたら、一覧の方を使う
 function applyMarks() {
-  posts = base.map(p => (p.id in marks ? { ...p, posted: marks[p.id].posted, postedAt: marks[p.id].at } : p));
+  posts = base.map(p => {
+    const m = marks[p.id];
+    if (!m || m.base !== !!p.posted) return p;
+    return { ...p, posted: m.posted, postedAt: m.at };
+  });
 }
 async function setPosted(t, value, cardEl, leaves) {
   if (busy.has(t.id)) return;
   busy.add(t.id);
   try {
     if (cardEl && value && leaves) { cardEl.classList.add("leaving"); await new Promise(r => setTimeout(r, 300)); }
-    marks[t.id] = { posted: value, at: value ? new Date().toISOString() : null };
-    try { localStorage.setItem(MARKS, JSON.stringify(marks)); } catch (e) { setStatus("このブラウザでは投稿済みの印を残せません（プライベートブラウズを切ってください）"); }
+    const b = base.find(p => p.id === t.id);
+    const basePosted = !!(b && b.posted);
+    if (value === basePosted) delete marks[t.id];        // 一覧と同じ状態に戻したら印は消す
+    else marks[t.id] = { posted: value, at: value ? new Date().toISOString() : null, base: basePosted };
+    let saved = true;
+    try { localStorage.setItem(MARKS, JSON.stringify(marks)); } catch (e) { saved = false; }
     applyMarks();
     render();
+    if (!saved) setStatus("このブラウザでは投稿済みの印を残せません（プライベートブラウズを切ってください）");
     if (value) { lastPosted = t; showToast(`${t.accountLabel} No.${t.no}（${t.platform}）を投稿済みにしました`); }
   } finally { busy.delete(t.id); }
 }
