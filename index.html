@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>AI動画 投稿ボード（チーム）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;700;900&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* レイアウト：1列のカード（スマホ前提）。上に垢の切り替え、カードは「動画を開く → コピー → 投稿した」の順に並ぶ */
+:root {
+  --bg: #f2f3ef;
+  --card: #ffffff;
+  --ink: #151613;
+  --muted: #5e6359;
+  --line: #d8dbd2;
+  --field: #f8f9f5;
+  --accent: #e8f500;
+  --accent-ink: #151613;
+  --ok: #1d7a3c;
+  --ok-bg: #e4f3e8;
+  --tiktok: #151613;
+  --insta: #c13584;
+  --c-nextvoice: #c9d400;
+  --c-rethink: #e5a100;
+  --c-yui: #e0569b;
+  --c-eigyo: #d23c2f;
+  --c-mio: #8b6fd6;
+  --display: "Zen Kaku Gothic New", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+  --body: "Zen Kaku Gothic New", "Hiragino Sans", "Hiragino Kaku Gothic ProN", sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f100e; --card: #1a1b18; --ink: #f0f1ec; --muted: #a2a79c; --line: #2f322c; --field: #141512;
+    --accent: #e8f500; --accent-ink: #151613; --ok: #74d394; --ok-bg: #1b2e21; --tiktok: #f0f1ec; --insta: #f06bb4;
+    --c-nextvoice: #e8f500; --c-rethink: #f2b733; --c-yui: #f07ab3; --c-eigyo: #f06a5d; --c-mio: #a993ec; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f100e; --card: #1a1b18; --ink: #f0f1ec; --muted: #a2a79c; --line: #2f322c; --field: #141512;
+  --accent: #e8f500; --accent-ink: #151613; --ok: #74d394; --ok-bg: #1b2e21; --tiktok: #f0f1ec; --insta: #f06bb4;
+  --c-nextvoice: #e8f500; --c-rethink: #f2b733; --c-yui: #f07ab3; --c-eigyo: #f06a5d; --c-mio: #a993ec; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 15px; line-height: 1.6; }
+.wrap { max-width: 640px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 96px; display: grid; gap: 14px; }
+h1 { font-family: var(--display); font-weight: 900; font-size: 24px; line-height: 1.25; margin: 0; text-wrap: balance; }
+h1 span { background: var(--accent); color: var(--accent-ink); padding: 0 6px; }
+.steps { margin: 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: 4px 12px; color: var(--muted); font-size: 13px; }
+.steps b { color: var(--ink); }
+.bar { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { border: 1px solid var(--line); background: var(--card); color: var(--ink); border-radius: 999px; padding: 5px 12px;
+  font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.chip .n { font-family: var(--mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+.status { color: var(--muted); font-size: 13px; }
+.post { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; display: grid; gap: 12px; min-width: 0; }
+.post.leaving { opacity: 0; transform: translateX(24px); transition: opacity .35s, transform .35s; }
+.head { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.acc { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; }
+.no { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+.title { font-family: var(--display); font-weight: 700; font-size: 18px; flex-basis: 100%; line-height: 1.35; }
+.plat { font-size: 12px; font-weight: 900; border-radius: 6px; padding: 1px 8px; border: 1.5px solid currentColor; }
+.plat.tt { color: var(--tiktok); }
+.plat.ig { color: var(--insta); }
+.note { font-size: 13px; color: var(--muted); }
+.settings { display: grid; gap: 4px; font-size: 13px; }
+.ai { font-weight: 900; justify-self: start; border-radius: 6px; padding: 1px 8px; }
+.ai.on { background: var(--accent); color: var(--accent-ink); }
+.ai.off { color: var(--muted); border: 1px solid var(--line); }
+.sound { color: var(--muted); overflow-wrap: anywhere; }
+.actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.btn { font-family: var(--body); font-weight: 900; font-size: 14px; border-radius: 10px; padding: 11px 10px; text-align: center;
+  cursor: pointer; border: 1.5px solid var(--ink); background: var(--card); color: var(--ink); text-decoration: none; }
+.btn.copy { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.copied { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.btn.wide { grid-column: 1 / -1; }
+.btn.done { border-color: var(--ok); color: var(--ok); background: var(--ok-bg); }
+details { border-top: 1px dashed var(--line); padding-top: 8px; }
+summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+textarea, input[type=url] { width: 100%; min-width: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--field);
+  color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.6; padding: 9px 11px; }  /* 16px 未満だと iPhone は触った時に画面が拡大する */
+textarea { resize: vertical; height: 9em; margin-top: 8px; }
+.bgm { border-left: 6px solid var(--accent); background: var(--field); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; }
+.bgm.baked { border-left-color: var(--line); }
+.bgm-h { font-size: 12px; font-weight: 900; color: var(--muted); letter-spacing: .04em; }
+.bgm-main { font-family: var(--display); font-weight: 900; font-size: 17px; line-height: 1.4; overflow-wrap: anywhere; }
+.bgm-main.plain { font-family: var(--body); font-weight: 700; font-size: 14px; }
+.bgm-sub { font-size: 13px; color: var(--muted); }
+.bgm .row input { font-size: 16px; padding: 6px 10px; }
+.targets { display: grid; gap: 8px; }
+.target { border: 1px solid var(--line); border-radius: 12px; padding: 10px; display: grid; gap: 8px; }
+.target.is-posted { border-style: dashed; background: var(--ok-bg); }
+.target-h { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.target-h .ok { color: var(--ok); font-weight: 900; font-size: 13px; }
+.badges { display: inline-flex; gap: 6px; }
+.badge { font-size: 12px; font-weight: 700; border-radius: 6px; padding: 1px 8px; border: 1px solid var(--line); color: var(--muted); }
+.badge.ok { border-color: var(--ok); color: var(--ok); background: var(--ok-bg); }
+.linkbtn { background: none; border: 0; color: var(--muted); text-decoration: underline; font-size: 13px; cursor: pointer; padding: 0; font-family: var(--body); justify-self: start; }
+.posted-info { display: grid; gap: 8px; font-size: 13px; color: var(--ok); }
+.row { display: flex; gap: 8px; align-items: center; }
+.row input { flex: 1; }
+.small { font-size: 13px; padding: 8px 12px; font-weight: 700; }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  background: var(--ink); color: var(--card); border-radius: 12px; padding: 10px 14px; display: flex; gap: 12px; align-items: center;
+  max-width: calc(100% - 32px); font-size: 14px; box-shadow: 0 6px 24px rgba(0,0,0,.25); }
+.toast[hidden] { display: none; }
+.toast button { background: var(--accent); color: var(--accent-ink); border: 0; border-radius: 8px; padding: 6px 10px; font-weight: 900; cursor: pointer; font-family: var(--body); }
+.empty { text-align: center; color: var(--muted); padding: 32px 8px; border: 1px dashed var(--line); border-radius: 14px; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .post.leaving { transition: none; } }
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <h1><span>チーム</span> 投稿ボード</h1>
+  <ol class="steps">
+    <li><b>①</b> 動画を開いて保存</li>
+    <li><b>②</b> BGM を確かめ、キャプションをコピーして投稿</li>
+    <li><b>③</b> 出した所の「投稿した」を押す（全部押すと消える）</li>
+  </ol>
+  <p class="note">「投稿した」の印はこのスマホにだけ残ります。一覧を更新すると、投稿済みの分は消えます。<span id="updated"></span></p>
+  <div class="bar" id="accounts" role="group" aria-label="垢で絞る"></div>
+  <div class="bar" id="views" role="group" aria-label="まだの分・投稿済みで絞る"></div>
+  <p class="status" id="status">読み込み中…</p>
+  <main id="list" style="display:grid;gap:14px"></main>
+</div>
+<div class="toast" id="toast" hidden><span id="toast-text"></span><button type="button" id="toast-undo">元に戻す</button></div>
+
+<script>
+// 1枚のカード＝1本の動画。投稿先（TikTok・Instagram）ごとに「投稿した」があり、全部押すと一覧から消える
+// （10/2 本人「1投稿につき2つね、インスタ・TikTok。ゆいのインスタの動画として作ったやつは1個でいい」「固定コメントいらない」「営業は BGM どれにするとか欲しい」）
+// データは db の posts（1件＝1動画×1媒体、group が同じものを1枚にまとめる）
+const ACCOUNTS = [
+  ["all", "すべて"], ["yui", "ゆい"], ["eigyo", "営業講座"], ["mio", "みお"],
+];
+const VIEWS = [["todo", "まだの分"], ["TikTok", "TikTok がまだ"], ["Instagram", "Instagram がまだ"], ["posted", "投稿済み"]];
+const ui = { account: "all", view: "todo" };
+try {
+  const saved = JSON.parse(localStorage.getItem("board-ui2") || "{}");
+  if (ACCOUNTS.some(a => a[0] === saved.account)) ui.account = saved.account;
+  if (VIEWS.some(v => v[0] === saved.view)) ui.view = saved.view;
+} catch (e) {}
+let posts = [];
+let col = null;
+let lastPosted = null;
+const busy = new Set();
+
+function saveUi() { try { localStorage.setItem("board-ui2", JSON.stringify(ui)); } catch (e) {} }
+function el(tag, attrs, text) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) e.setAttribute(k, v);
+  if (text != null) e.textContent = text;
+  return e;
+}
+const platOrder = p => (p.platform === "TikTok" ? 0 : 1);
+const groupKey = p => p.group || p.id.replace(/-(tt|ig)$/, "");
+function groups() {
+  const m = new Map();
+  for (const p of posts) {
+    const k = groupKey(p);
+    if (!m.has(k)) m.set(k, { key: k, account: p.account, accountLabel: p.accountLabel, no: p.no, title: p.title, order: p.order, targets: [] });
+    const g = m.get(k);
+    g.targets.push(p);
+    g.order = Math.min(g.order, p.order);
+  }
+  const arr = [...m.values()];
+  for (const g of arr) g.targets.sort((a, b) => platOrder(a) - platOrder(b));
+  return arr.sort((a, b) => a.order - b.order);
+}
+const pendingOf = g => g.targets.filter(t => !t.posted);
+function shown(g) {
+  if (ui.account !== "all" && g.account !== ui.account) return false;
+  if (ui.view === "posted") return g.targets.some(t => t.posted);
+  if (ui.view === "todo") return pendingOf(g).length > 0;
+  return g.targets.some(t => t.platform === ui.view && !t.posted);
+}
+const same = (list, f) => list.every(x => f(x) === f(list[0]));
+const bgmKey = t => [t.bgmMode || "", t.bgmSong || "", t.bgmLevel || "", t.bgmText || t.sound || ""].join("|");
+function when(t) {
+  if (t.postedAt) return new Date(t.postedAt).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  return t.postedNote || "";
+}
+
+function renderBars(all) {
+  const acc = document.getElementById("accounts");
+  acc.replaceChildren();
+  for (const [key, label] of ACCOUNTS) {
+    const n = all.filter(g => pendingOf(g).length && (key === "all" || g.account === key)).length;
+    const b = el("button", { class: "chip", type: "button", "aria-pressed": String(ui.account === key) });
+    if (key !== "all") { const d = el("span", { class: "dot" }); d.style.background = `var(--c-${key})`; b.append(d); }
+    b.append(document.createTextNode(label), el("span", { class: "n" }, String(n)));
+    b.addEventListener("click", () => { ui.account = key; saveUi(); render(); });
+    acc.append(b);
+  }
+  const vw = document.getElementById("views");
+  vw.replaceChildren();
+  for (const [key, label] of VIEWS) {
+    const b = el("button", { class: "chip", type: "button", "aria-pressed": String(ui.view === key) }, label);
+    b.addEventListener("click", () => { ui.view = key; saveUi(); render(); });
+    vw.append(b);
+  }
+}
+
+// スマホでのコピー（10/1 本人「スマホで見たらコピーできるように」）：
+// ① 押した瞬間に見えない入力欄から execCommand でコピー（iPhone の Safari・アプリの中の画面でも通りやすい。押した操作の中でしか通らないので最初にやる）
+// ② だめなら navigator.clipboard ③ それもだめなら、中身の枠を開いて全部選んだ状態にし「長押し→コピー」を出す
+function legacyCopy(text) {
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  ta.setAttribute("readonly", "");
+  ta.style.cssText = "position:fixed;top:0;left:0;width:1px;height:1px;opacity:0;font-size:16px;";
+  document.body.appendChild(ta);
+  const sel = window.getSelection();
+  const range = document.createRange();
+  range.selectNodeContents(ta);
+  sel.removeAllRanges(); sel.addRange(range);
+  ta.select();
+  ta.setSelectionRange(0, text.length);
+  let ok = false;
+  try { ok = document.execCommand("copy"); } catch (e) { ok = false; }
+  sel.removeAllRanges();
+  document.body.removeChild(ta);
+  return ok;
+}
+
+async function copyText(text, area, btn, label) {
+  let ok = legacyCopy(text);
+  if (!ok && navigator.clipboard && navigator.clipboard.writeText) {
+    try { await navigator.clipboard.writeText(text); ok = true; } catch (e) { ok = false; }
+  }
+  if (!ok && area) {
+    const det = area.closest("details");
+    if (det) det.open = true;
+    area.focus();
+    area.setSelectionRange(0, text.length);
+  }
+  btn.textContent = ok ? "コピーしました" : "枠を長押し→「コピー」";
+  btn.classList.toggle("copied", ok);
+  setTimeout(() => { btn.textContent = label; btn.classList.remove("copied"); }, ok ? 2000 : 6000);
+}
+
+let toastTimer = null;
+function showToast(text) {
+  const t = document.getElementById("toast");
+  document.getElementById("toast-text").textContent = text;
+  t.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.hidden = true; }, 6000);
+}
+document.getElementById("toast-undo").addEventListener("click", () => {
+  document.getElementById("toast").hidden = true;
+  if (lastPosted) setPosted(lastPosted, false, null, false);
+});
+
+function bgmBlock(t, label) {
+  const mode = t.bgmMode || "other";
+  const b = el("div", { class: "bgm " + mode });
+  b.append(el("div", { class: "bgm-h" }, (label ? label + " の" : "") + "BGM"));
+  if (mode === "app") {
+    b.append(el("div", { class: "bgm-main" }, `アプリで「${t.bgmSong}」を付ける`));
+    if (t.bgmLevel) b.append(el("div", { class: "bgm-sub" }, "音量：" + t.bgmLevel));
+    const row = el("div", { class: "row" });
+    const inp = el("input", { type: "text", readonly: "", "aria-label": "曲名" });
+    inp.value = t.bgmSong;
+    const btn = el("button", { class: "btn small", type: "button" }, "曲名をコピー");
+    btn.addEventListener("click", () => copyText(t.bgmSong, inp, btn, "曲名をコピー"));
+    row.append(inp, btn);
+    b.append(row);
+  } else {
+    b.append(el("div", { class: "bgm-main" + (mode === "baked" ? "" : " plain") }, t.bgmText || t.sound || "（指示なし）"));
+  }
+  return b;
+}
+
+function targetRow(g, t, opts, cardEl) {
+  const r = el("div", { class: "target" + (t.posted ? " is-posted" : "") });
+  const h = el("div", { class: "target-h" });
+  h.append(el("span", { class: "plat " + (t.platform === "TikTok" ? "tt" : "ig") }, t.platform));
+  if (t.posted) h.append(el("span", { class: "ok" }, "✓ 投稿済み " + when(t)));
+  r.append(h);
+  const act = el("div", { class: "actions" });
+  if (!opts.videoSame) act.append(t.video ? el("a", { class: "btn", href: t.video, target: "_blank", rel: "noopener" }, "動画を開く") : el("span", { class: "btn" }, "動画はまだ"));
+  if (!opts.capSame) {
+    const area = opts.areas.get(t.id);
+    const cb = el("button", { class: "btn copy", type: "button" }, "キャプションをコピー");
+    cb.addEventListener("click", () => copyText(t.cap || "", area, cb, "キャプションをコピー"));
+    act.append(cb);
+  }
+  if (!t.posted) {
+    const done = el("button", { class: "btn done wide", type: "button" }, `③ ${t.platform} に投稿した`);
+    done.addEventListener("click", () => setPosted(t, true, cardEl, ui.view !== "posted" && pendingOf(g).length === 1));
+    act.append(done);
+  }
+  if (act.childElementCount) r.append(act);
+  if (t.posted && ui.view === "posted" && col) {
+    const row = el("div", { class: "row" });
+    const url = el("input", { type: "url", placeholder: "投稿のURL（あれば。数字の記録に使います）", "aria-label": t.platform + " の投稿のURL" });
+    url.value = t.url || "";
+    const save = el("button", { class: "btn small", type: "button" }, "保存");
+    save.addEventListener("click", async () => {
+      if (!col) return;
+      try { await col.doc(t.id).update({ url: url.value.trim() }); save.textContent = "保存しました"; }
+      catch (e) { save.textContent = "保存できません"; }
+      setTimeout(() => { save.textContent = "保存"; }, 1800);
+    });
+    row.append(url, save);
+    r.append(row);
+  }
+  if (t.posted) {
+    const undo = el("button", { class: "linkbtn", type: "button" }, "まだ投稿していない（戻す）");
+    undo.addEventListener("click", () => setPosted(t, false, null, false));
+    r.append(undo);
+  }
+  return r;
+}
+
+function card(g) {
+  const c = el("article", { class: "post", id: "g-" + g.key });
+  const ts = g.targets;
+  const head = el("div", { class: "head" });
+  const acc = el("span", { class: "acc" });
+  const d = el("span", { class: "dot" }); d.style.background = `var(--c-${g.account})`;
+  acc.append(d, document.createTextNode(g.accountLabel));
+  const badges = el("span", { class: "badges" });
+  for (const t of ts) badges.append(el("span", { class: "badge" + (t.posted ? " ok" : "") }, t.platform + (t.posted ? " ✓" : " まだ")));
+  head.append(acc, el("span", { class: "no" }, "No." + g.no), badges, el("span", { class: "title" }, g.title));
+  c.append(head);
+
+  if (same(ts, bgmKey)) c.append(bgmBlock(ts[0], ""));
+  else for (const t of ts) c.append(bgmBlock(t, t.platform));
+  const notes = [...new Set(ts.map(t => t.note).filter(Boolean))];
+  for (const n of notes) c.append(el("p", { class: "note" }, "※ " + n));
+  const set = el("div", { class: "settings" });
+  if (same(ts, t => t.ai)) set.append(el("span", { class: "ai " + (ts[0].ai === "ON" ? "on" : "off") }, ts[0].ai === "ON" ? "AIラベル：ON にする" : "AIラベル：OFF のまま"));
+  else for (const t of ts) set.append(el("span", { class: "ai " + (t.ai === "ON" ? "on" : "off") }, `${t.platform}：AIラベル ${t.ai === "ON" ? "ON にする" : "OFF のまま"}`));
+  c.append(set);
+
+  const opts = { videoSame: same(ts, t => t.video || ""), capSame: same(ts, t => t.cap || ""), areas: new Map() };
+  const det = el("details");
+  det.append(el("summary", {}, "キャプションの中身を見る"));
+  for (const t of (opts.capSame ? [ts[0]] : ts)) {
+    if (!opts.capSame) det.append(el("div", { class: "note" }, t.platform));
+    const area = el("textarea", { readonly: "", "aria-label": (opts.capSame ? "" : t.platform + " の") + "キャプション" });
+    area.value = t.cap || "";
+    det.append(area);
+    opts.areas.set(t.id, area);
+  }
+
+  const act = el("div", { class: "actions" });
+  if (opts.videoSame) {
+    const v = ts[0].video;
+    act.append(v ? el("a", { class: "btn", href: v, target: "_blank", rel: "noopener" }, "① 動画を開く") : el("span", { class: "btn" }, "動画は Drive にまだ無い"));
+  }
+  if (opts.capSame) {
+    const area = opts.areas.get(ts[0].id);
+    const cb = el("button", { class: "btn copy", type: "button" }, "② キャプションをコピー");
+    cb.addEventListener("click", () => copyText(ts[0].cap || "", area, cb, "② キャプションをコピー"));
+    act.append(cb);
+  }
+  if (act.childElementCount) c.append(act);
+
+  const tl = el("div", { class: "targets" });
+  for (const t of ts) tl.append(targetRow(g, t, opts, c));
+  c.append(tl, det);
+  return c;
+}
+
+function setStatus(t) { document.getElementById("status").textContent = t; }
+
+function render() {
+  const all = groups();
+  renderBars(all);
+  const list = document.getElementById("list");
+  list.replaceChildren();
+  const view = all.filter(shown);
+  const left = all.filter(g => pendingOf(g).length).length;
+  if (ui.view === "posted") setStatus(`投稿済みがある動画 ${view.length} 本（まだの分がある動画は ${left} 本）`);
+  else setStatus(`まだ投稿していない動画 ${view.length} 本（全体で ${left} 本）`);
+  if (!all.length) { list.append(el("div", { class: "empty" }, "まだ動画がありません。動画ができると、Claude がここに足します。")); return; }
+  if (!view.length) { list.append(el("div", { class: "empty" }, ui.view === "posted" ? "投稿済みはまだありません。" : "この絞り込みでは、全部投稿済みです。")); return; }
+  for (const g of view) list.append(card(g));
+}
+
+/* DATA-LAYER:BEGIN チーム用（GitHub）：一覧は data.json、投稿済みの印はこのスマホ（localStorage）に残す */
+const MARKS = "team-board-marks";
+let marks = {};
+try { marks = JSON.parse(localStorage.getItem(MARKS) || "{}"); } catch (e) { marks = {}; }
+let base = [];
+function applyMarks() {
+  posts = base.map(p => (p.id in marks ? { ...p, posted: marks[p.id].posted, postedAt: marks[p.id].at } : p));
+}
+async function setPosted(t, value, cardEl, leaves) {
+  if (busy.has(t.id)) return;
+  busy.add(t.id);
+  try {
+    if (cardEl && value && leaves) { cardEl.classList.add("leaving"); await new Promise(r => setTimeout(r, 300)); }
+    marks[t.id] = { posted: value, at: value ? new Date().toISOString() : null };
+    try { localStorage.setItem(MARKS, JSON.stringify(marks)); } catch (e) { setStatus("このブラウザでは投稿済みの印を残せません（プライベートブラウズを切ってください）"); }
+    applyMarks();
+    render();
+    if (value) { lastPosted = t; showToast(`${t.accountLabel} No.${t.no}（${t.platform}）を投稿済みにしました`); }
+  } finally { busy.delete(t.id); }
+}
+renderBars([]);
+(async () => {
+  try {
+    const r = await fetch("data.json?v=" + Date.now(), { cache: "no-store" });
+    const d = await r.json();
+    base = d.items || [];
+    if (d.updated) document.getElementById("updated").textContent = "一覧の更新：" + d.updated;
+    applyMarks();
+    render();
+  } catch (e) { setStatus("一覧を読めませんでした。ページを開き直してください。"); }
+})();
+/* DATA-LAYER:END */
+</script>
+</body>
+</html>
